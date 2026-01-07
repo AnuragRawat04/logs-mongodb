@@ -14,6 +14,7 @@ GEMINI_PRICING = {
     "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40}
 }
 
+
 class InitRequest(BaseModel):
     name:str
     email:str
@@ -71,9 +72,11 @@ def ask_llm(data:PromptRequest):
     response = call_gemini(data.prompt,data.model_name)
     response_text = response.text
 
-    prompt_tokens = response.usage_metadata.prompt_token_count
-    response_tokens = response.usage_metadata.candidates_token_count
+    usage=getattr(response,"usage_metadata",None)
+    prompt_tokens = usage.prompt_token_count if usage else 0
+    response_tokens = usage.candidates_token_count if usage else 0
     total_tokens = prompt_tokens + response_tokens
+
 
     # 3. Cost
     estimated_cost = calculate_cost(
