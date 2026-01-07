@@ -1,0 +1,107 @@
+from fastapi import FastAPI,HTTPException
+from pydantic import BaseModel
+from datetime import datetime
+import time
+
+from db import user_collection,logs_collection
+from genai_llm import call_gemini
+
+app=FastAPI()
+
+GEMINI_PRICING = {
+    "gemini-2.5-flash":   {"input": 0.30, "output": 2.50},
+    "gemini-2.5-pro":     {"input": 1.25, "output": 10.00},
+    "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40}
+}
+
+class InitRequest(BaseModel):
+    name:str
+    email:str
+    
+class PromptRequest(BaseModel):
+    email:str
+    prompt:str
+    model_name:str
+
+class PromptResponse(BaseModel):
+    response:str
+    prompt_tokens:int
+    response_tokens:int
+    total_tokens:int
+    estimated_cost:float
+
+def calculate_cost(model_name:str,prompt_tokens:int,response_tokens:int):
+    pricing=GEMINI_PRICING[model_name]
+    input_cost = (prompt_tokens / 1_000_000) * pricing["input"]
+    output_cost = (response_tokens / 1_000_000) * pricing["output"]
+    return float(f"{input_cost + output_cost:.6f}")
+
+@app.post("/init_user")
+def init_user(data:InitRequest):
+    existing=user_collection.find_one({"email":data.email})
+    if existing:
+        return{
+            "message":"User already exists",
+            "name":existing['name'],
+            "email":existing['email']
+        }
+
+    user_collection.insert_one({
+        "name":data.name,
+        "email":data.email,
+        "created_at":datetime.utcnow()
+    })
+    return {
+        "message": "New user created",
+        "name": data.name,
+        "email": data.email
+    }
+    
+@app.post("/ask",response_model=PromptResponse)
+def ask_llm(data:PromptRequest):
+    user=user_collection.find_one({'email':data.email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found. Please initialize user first.")
+
+    if data.model_name not in GEMINI_PRICING:
+        raise HTTPException(status_code=400, detail="Invalid model name")
+    start_time = time.time()
+
+    # 2. Call Gemini via LangChain
+    response = call_gemini(data.prompt,data.model_name)
+    response_text = response.text
+
+    prompt_tokens = response.usage_metadata.prompt_token_count
+    response_tokens = response.usage_metadata.candidates_token_count
+    total_tokens = prompt_tokens + response_tokens
+
+    # 3. Cost
+    estimated_cost = calculate_cost(
+        data.model_name,
+        prompt_tokens,
+        response_tokens
+    )
+
+    latency = time.time() - start_time
+
+    logs_collection.insert_one({
+        "name": user["name"],
+        "email": user["email"],
+        "model_name": data.model_name,
+        "prompt": data.prompt,
+        "response": response_text,
+        "prompt_tokens": prompt_tokens,
+        "response_tokens": response_tokens,
+        "total_tokens": total_tokens,
+        "estimated_cost": estimated_cost,
+        "latency": latency,
+        "created_at": datetime.utcnow()
+    })
+
+    return {
+        "response": response_text,
+        "prompt_tokens": prompt_tokens,
+        "response_tokens": response_tokens,
+        "total_tokens": total_tokens,
+        "estimated_cost": estimated_cost
+    }
