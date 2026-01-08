@@ -8,21 +8,6 @@ from db import user_collection, logs_collection
 from genai_llm import call_gemini
 app = FastAPI()
 
-origins = [
-    "http://localhost:8501",     # Streamlit default (HTTP)
-    "http://127.0.0.1:8501",     # alternative localhost
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,       # or ["*"] for quick local testing
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 GEMINI_PRICING = {
     "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
     "gemini-2.5-pro": {"input": 1.25, "output": 10.00},
@@ -125,8 +110,3 @@ async def ask_llm(data: PromptRequest):
         "total_tokens": total_tokens,
         "estimated_cost": estimated_cost,
     }
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
