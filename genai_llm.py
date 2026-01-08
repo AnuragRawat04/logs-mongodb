@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=os.getenv("Gemini_api_key"))
 
 def call_gemini(prompt: str, model_name: str):
     model = genai.GenerativeModel(model_name)
