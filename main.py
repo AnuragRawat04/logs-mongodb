@@ -14,8 +14,6 @@ GEMINI_PRICING = {
     "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40}
 }
 
-# --- Models ---
-
 class InitRequest(BaseModel):
     name: str = Field(..., min_length=1)
     email: EmailStr
@@ -32,8 +30,6 @@ class PromptResponse(BaseModel):
     total_tokens: int
     estimated_cost: float
 
-# --- Utilities ---
-
 def calculate_cost(model_name: str, prompt_tokens: int, response_tokens: int) -> float:
     pricing = GEMINI_PRICING[model_name]
     input_cost = (prompt_tokens / 1_000_000) * pricing["input"]
@@ -41,13 +37,10 @@ def calculate_cost(model_name: str, prompt_tokens: int, response_tokens: int) ->
     return round(input_cost + output_cost, 6)
 
 async def get_current_user(email: EmailStr):
-    """Dependency to verify user exists."""
     user = user_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
-
-# --- Routes ---
 
 @app.post("/init_user")
 async def init_user(data: InitRequest):
@@ -71,8 +64,6 @@ async def ask_llm(data: PromptRequest, user=Depends(get_current_user)):
     start_time = time.time()
 
     try:
-        # Assuming call_gemini is a synchronous function; 
-        # if it's async, use 'await call_gemini'
         response = call_gemini(data.prompt, data.model_name)
         response_text = response.text
         
@@ -86,7 +77,6 @@ async def ask_llm(data: PromptRequest, user=Depends(get_current_user)):
     estimated_cost = calculate_cost(data.model_name, prompt_tokens, response_tokens)
     latency = time.time() - start_time
 
-    # Log to DB (Fire and forget or await)
     logs_collection.insert_one({
         "user_id": user["_id"],
         "email": user["email"],
