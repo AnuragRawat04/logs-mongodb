@@ -36,7 +36,7 @@ def calculate_cost(model_name: str, prompt_tokens: int, response_tokens: int) ->
     output_cost = (response_tokens / 1_000_000) * pricing["output"]
     return round(input_cost + output_cost, 6)
 
-async def get_current_user(email: EmailStr):
+async def get_current_user(email: PromptRequest):
     user = user_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
