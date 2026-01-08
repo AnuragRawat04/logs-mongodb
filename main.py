@@ -1,9 +1,7 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 import time
-
 from db import user_collection, logs_collection
 from genai_llm import call_gemini
 app = FastAPI()
@@ -13,7 +11,6 @@ GEMINI_PRICING = {
     "gemini-2.5-pro": {"input": 1.25, "output": 10.00},
     "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40},
 }
-
 
 class InitRequest(BaseModel):
     name: str = Field(..., min_length=1)
@@ -32,7 +29,6 @@ class PromptResponse(BaseModel):
     response_tokens: int
     total_tokens: int
     estimated_cost: float
-
 
 def calculate_cost(model_name: str, prompt_tokens: int, response_tokens: int) -> float:
     pricing = GEMINI_PRICING[model_name]
