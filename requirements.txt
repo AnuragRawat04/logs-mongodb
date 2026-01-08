@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-pymongo
-python-dotenv
-google-generativeai
-langchain
-langchain-google-genai
